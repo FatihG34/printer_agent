@@ -1,0 +1,20 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Alpidi Printer Agent
+GenericName=Printer Management Service
+Comment=Local printer management service for Alpidi applications
+Exec=alpidi-printer-agent
+Icon=printer
+Terminal=false
+StartupNotify=true
+Categories=Office;Printing;System;
+Keywords=printer;print;alpidi;agent;service;
+MimeType=application/pdf;
+
+# Additional metadata
+StartupWMClass=alpidi-printer-agent
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=5
+X-KDE-autostart-after=panel
+X-Desktop-File-Install-Version=0.26

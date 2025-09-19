@@ -1,0 +1,126 @@
+#!/bin/bash
+
+# Alpidi Printer Agent Launcher Script
+# This script launches the Alpidi Printer Agent Java application
+
+JAVA_HOME=${JAVA_HOME:-}
+JAR_PATH="/opt/alpidi-printer-agent/alpidi-printer-agent.jar"
+JAVA_OPTS="-Djava.awt.headless=false -Dfile.encoding=UTF-8"
+
+# Function to find Java
+find_java() {
+    # Check JAVA_HOME first
+    if [ -n "$JAVA_HOME" ] && [ -x "$JAVA_HOME/bin/java" ]; then
+        echo "$JAVA_HOME/bin/java"
+        return 0
+    fi
+    
+    # Check common Java locations
+    for java_path in \
+        "/usr/lib/jvm/java-17-openjdk/bin/java" \
+        "/usr/lib/jvm/java-17-openjdk-amd64/bin/java" \
+        "/usr/lib/jvm/java-21-openjdk/bin/java" \
+        "/usr/lib/jvm/java-21-openjdk-amd64/bin/java" \
+        "/usr/lib/jvm/default-java/bin/java" \
+        "/usr/bin/java" \
+        "/bin/java"; do
+        if [ -x "$java_path" ]; then
+            echo "$java_path"
+            return 0
+        fi
+    done
+    
+    # Try which command
+    if command -v java >/dev/null 2>&1; then
+        echo "java"
+        return 0
+    fi
+    
+    return 1
+}
+
+# Check if JAR file exists
+if [ ! -f "$JAR_PATH" ]; then
+    echo "Error: Alpidi Printer Agent JAR not found at $JAR_PATH"
+    echo "Please reinstall the application."
+    exit 1
+fi
+
+# Find Java executable
+JAVA_CMD=$(find_java)
+if [ $? -ne 0 ]; then
+    echo "Error: Java 17 or higher is required but not found."
+    echo "Please install OpenJDK 17 or higher:"
+    echo "  Ubuntu/Debian: sudo apt install openjdk-17-jre"
+    echo "  Fedora/RHEL:   sudo dnf install java-17-openjdk"
+    echo "  Arch Linux:    sudo pacman -S jre17-openjdk"
+    exit 1
+fi
+
+# Check Java version
+JAVA_VERSION=$("$JAVA_CMD" -version 2>&1 | head -n 1 | cut -d'"' -f2 | cut -d'.' -f1)
+if [ "$JAVA_VERSION" -lt 17 ] 2>/dev/null; then
+    echo "Error: Java 17 or higher is required. Found Java $JAVA_VERSION"
+    echo "Please upgrade your Java installation."
+    exit 1
+fi
+
+# Create log directory
+LOG_DIR="$HOME/.local/share/alpidi-printer-agent/logs"
+mkdir -p "$LOG_DIR"
+
+# Set up logging
+LOG_FILE="$LOG_DIR/alpidi-printer-agent.log"
+
+# Function to log messages
+log_message() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
+}
+
+log_message "Starting Alpidi Printer Agent..."
+log_message "Java Command: $JAVA_CMD"
+log_message "JAR Path: $JAR_PATH"
+
+# Check if already running
+PID_FILE="$HOME/.local/share/alpidi-printer-agent/alpidi-printer-agent.pid"
+if [ -f "$PID_FILE" ]; then
+    PID=$(cat "$PID_FILE")
+    if kill -0 "$PID" 2>/dev/null; then
+        echo "Alpidi Printer Agent is already running (PID: $PID)"
+        log_message "Already running (PID: $PID)"
+        exit 0
+    else
+        rm -f "$PID_FILE"
+    fi
+fi
+
+# Start the application
+echo "Starting Alpidi Printer Agent..."
+echo "Web interface will be available at: http://localhost:9000"
+
+# Determine run mode
+RUN_MODE="desktop"
+if [ "$1" = "--headless" ] || [ "$1" = "--service" ] || [ "$1" = "--daemon" ]; then
+    RUN_MODE="headless"
+fi
+
+# Check if running in desktop environment
+if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ]; then
+    RUN_MODE="headless"
+fi
+
+# Run in appropriate mode
+if [ "$RUN_MODE" = "headless" ] || [ ! -t 1 ]; then
+    # Running in background/headless mode
+    echo "Starting in headless mode..."
+    nohup "$JAVA_CMD" $JAVA_OPTS -jar "$JAR_PATH" --headless "$@" >> "$LOG_FILE" 2>&1 &
+    PID=$!
+    echo $PID > "$PID_FILE"
+    log_message "Started in headless mode (PID: $PID)"
+    echo "Alpidi Printer Agent started in background (PID: $PID)"
+    echo "Log file: $LOG_FILE"
+else
+    # Running in terminal with desktop support
+    echo "Starting in desktop mode..."
+    exec "$JAVA_CMD" $JAVA_OPTS -jar "$JAR_PATH" "$@"
+fi

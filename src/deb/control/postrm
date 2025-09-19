@@ -1,0 +1,32 @@
+#!/bin/bash
+set -e
+
+if [ "$1" = "purge" ]; then
+    # Remove user and group
+    if getent passwd alpidi-printer-agent >/dev/null; then
+        deluser alpidi-printer-agent || true
+    fi
+    
+    if getent group alpidi-printer-agent >/dev/null; then
+        delgroup alpidi-printer-agent || true
+    fi
+    
+    # Remove directories
+    rm -rf /var/log/alpidi-printer-agent
+    rm -rf /var/lib/alpidi-printer-agent
+    rm -rf /etc/alpidi-printer-agent
+    
+    # Reload systemd
+    if [ -d /run/systemd/system ]; then
+        systemctl daemon-reload
+    fi
+fi
+
+# Update desktop database
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database -q /usr/share/applications
+fi
+
+#DEBHELPER#
+
+exit 0

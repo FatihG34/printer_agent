@@ -1,0 +1,24 @@
+Package: alpidi-printer-agent
+Version: [[version]]
+Section: utils
+Priority: optional
+Architecture: all
+Depends: openjdk-17-jre | openjdk-21-jre | default-jre (>= 2:1.17)
+Recommends: cups, cups-client
+Suggests: printer-driver-all
+Maintainer: Alpidi <support@alpidi.com>
+Homepage: https://alpidi.com
+Description: Local printer management service for Alpidi applications
+ Alpidi Printer Agent is a local service that manages printer operations
+ for Alpidi web applications. It provides a REST API for printer discovery,
+ configuration, and document printing.
+ .
+ Features:
+  * Automatic printer detection
+  * Web-based management interface
+  * PDF printing support
+  * Cross-platform compatibility
+  * System tray integration (GUI environments)
+ .
+ The service runs on port 9000 and provides a web interface for
+ configuration and monitoring.

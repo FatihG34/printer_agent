@@ -1,0 +1,32 @@
+[Unit]
+Description=Alpidi Printer Agent
+Documentation=https://alpidi.com/docs/printer-agent
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=alpidi-printer-agent
+Group=alpidi-printer-agent
+ExecStart=/usr/bin/java -jar /opt/alpidi-printer-agent/alpidi-printer-agent.jar
+ExecStop=/bin/kill -TERM $MAINPID
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=alpidi-printer-agent
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/log/alpidi-printer-agent
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+# Environment
+Environment=JAVA_OPTS=-Djava.awt.headless=true
+Environment=SERVER_PORT=9000
+
+[Install]
+WantedBy=multi-user.target
