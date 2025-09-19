@@ -1,0 +1,17 @@
+{"properties": [
+  {
+    "name": "port",
+    "type": "java.lang.String",
+    "description": "A description for 'port'"
+  },
+  {
+    "name": "backend.base-url",
+    "type": "java.lang.String",
+    "description": "A description for 'backend.base-url'"
+  },
+  {
+    "name": "agent.user-id",
+    "type": "java.lang.String",
+    "description": "A description for 'agent.user-id'"
+  }
+]}
