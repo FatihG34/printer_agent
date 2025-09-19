@@ -50,6 +50,266 @@
 					<plugin>
 						<groupId>org.graalvm.buildtools</groupId>
 						<artifactId>native-maven-plugin</artifactId>
+						<version>0.10.2</version>
+						<extensions>true</extensions>
+						<executions>
+							<execution>
+								<id>build-native</id>
+								<goals>
+									<goal>compile-no-fork</goal>
+								</goals>
+								<phase>package</phase>
+							</execution>
+						</executions>
+						<configuration>
+							<imageName>alpidi-printer-agent</imageName>
+							<mainClass>com.alpidiprinteragent.alpidiprinteragent.AlpidiprinteragentApplication</mainClass>
+							<buildArgs>
+								<buildArg>--no-fallback</buildArg>
+								<buildArg>--install-exit-handlers</buildArg>
+								<buildArg>-H:+ReportExceptionStackTraces</buildArg>
+							</buildArgs>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		
+		<profile>
+			<id>mac</id>
+			<activation>
+				<os>
+					<family>mac</family>
+				</os>
+			</activation>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-antrun-plugin</artifactId>
+						<version>3.1.0</version>
+						<executions>
+							<execution>
+								<id>create-mac-app</id>
+								<phase>package</phase>
+								<goals>
+									<goal>run</goal>
+								</goals>
+								<configuration>
+									<target>
+										<echo message="Creating macOS .app bundle manually..."/>
+										
+										<!-- Create .app directory structure -->
+										<mkdir dir="${project.build.directory}/Alpidi Printer Agent.app"/>
+										<mkdir dir="${project.build.directory}/Alpidi Printer Agent.app/Contents"/>
+										<mkdir dir="${project.build.directory}/Alpidi Printer Agent.app/Contents/MacOS"/>
+										<mkdir dir="${project.build.directory}/Alpidi Printer Agent.app/Contents/Resources"/>
+										<mkdir dir="${project.build.directory}/Alpidi Printer Agent.app/Contents/Java"/>
+										
+										<!-- Copy JAR file -->
+										<copy file="${project.build.directory}/${project.artifactId}-${project.version}-exec.jar" 
+											  tofile="${project.build.directory}/Alpidi Printer Agent.app/Contents/Java/alpidi-printer-agent.jar"/>
+										
+										<!-- Copy icon if exists -->
+										<copy file="src/main/resources/icon.icns" 
+											  todir="${project.build.directory}/Alpidi Printer Agent.app/Contents/Resources" 
+											  failonerror="false"/>
+										
+										<!-- Create Info.plist -->
+										<echo file="${project.build.directory}/Alpidi Printer Agent.app/Contents/Info.plist">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"&gt;
+&lt;plist version="1.0"&gt;
+&lt;dict&gt;
+	&lt;key&gt;CFBundleDevelopmentRegion&lt;/key&gt;
+	&lt;string&gt;en&lt;/string&gt;
+	&lt;key&gt;CFBundleExecutable&lt;/key&gt;
+	&lt;string&gt;alpidi-printer-agent&lt;/string&gt;
+	&lt;key&gt;CFBundleIconFile&lt;/key&gt;
+	&lt;string&gt;icon.icns&lt;/string&gt;
+	&lt;key&gt;CFBundleIdentifier&lt;/key&gt;
+	&lt;string&gt;com.alpidi.printeragent&lt;/string&gt;
+	&lt;key&gt;CFBundleInfoDictionaryVersion&lt;/key&gt;
+	&lt;string&gt;6.0&lt;/string&gt;
+	&lt;key&gt;CFBundleName&lt;/key&gt;
+	&lt;string&gt;Alpidi Printer Agent&lt;/string&gt;
+	&lt;key&gt;CFBundlePackageType&lt;/key&gt;
+	&lt;string&gt;APPL&lt;/string&gt;
+	&lt;key&gt;CFBundleShortVersionString&lt;/key&gt;
+	&lt;string&gt;1.0.0&lt;/string&gt;
+	&lt;key&gt;CFBundleVersion&lt;/key&gt;
+	&lt;string&gt;1.0.0&lt;/string&gt;
+	&lt;key&gt;LSMinimumSystemVersion&lt;/key&gt;
+	&lt;string&gt;10.15&lt;/string&gt;
+	&lt;key&gt;NSHighResolutionCapable&lt;/key&gt;
+	&lt;true/&gt;
+	&lt;key&gt;LSUIElement&lt;/key&gt;
+	&lt;true/&gt;
+&lt;/dict&gt;
+&lt;/plist&gt;</echo>
+										
+										<!-- Create launcher script -->
+										<echo file="${project.build.directory}/Alpidi Printer Agent.app/Contents/MacOS/alpidi-printer-agent">#!/bin/bash
+cd "$(dirname "$0")/../Java"
+java -Dapple.laf.useScreenMenuBar=true \
+     -Dcom.apple.macos.use-file-dialog-packages=true \
+     -Dcom.apple.macos.useScreenMenuBar=true \
+     -Xdock:name="Alpidi Printer Agent" \
+     -jar alpidi-printer-agent.jar</echo>
+										
+										<!-- Make launcher executable -->
+										<chmod file="${project.build.directory}/Alpidi Printer Agent.app/Contents/MacOS/alpidi-printer-agent" perm="755"/>
+										
+										<echo message="macOS .app bundle created successfully!"/>
+									</target>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		
+		<profile>
+			<id>linux</id>
+			<activation>
+				<os>
+					<family>unix</family>
+					<name>Linux</name>
+				</os>
+			</activation>
+			<build>
+				<plugins>
+					<!-- DEB Package Plugin -->
+					<plugin>
+						<artifactId>jdeb</artifactId>
+						<groupId>org.vafer</groupId>
+						<version>1.10</version>
+						<executions>
+							<execution>
+								<phase>package</phase>
+								<goals>
+									<goal>jdeb</goal>
+								</goals>
+								<configuration>
+									<verbose>true</verbose>
+									<snapshotExpand>true</snapshotExpand>
+									<snapshotEnv>USER</snapshotEnv>
+									<verbose>true</verbose>
+									<controlDir>${basedir}/src/deb/control</controlDir>
+									<dataSet>
+										<data>
+											<src>${project.build.directory}/${project.artifactId}-${project.version}-exec.jar</src>
+											<dst>alpidi-printer-agent.jar</dst>
+											<type>file</type>
+											<mapper>
+												<type>perm</type>
+												<prefix>/opt/alpidi-printer-agent</prefix>
+											</mapper>
+										</data>
+										<data>
+											<src>${basedir}/src/linux/alpidi-printer-agent</src>
+											<type>file</type>
+											<mapper>
+												<type>perm</type>
+												<prefix>/usr/bin</prefix>
+												<filemode>755</filemode>
+											</mapper>
+										</data>
+										<data>
+											<src>${basedir}/src/linux/alpidi-printer-agent.desktop</src>
+											<type>file</type>
+											<mapper>
+												<type>perm</type>
+												<prefix>/usr/share/applications</prefix>
+											</mapper>
+										</data>
+										<data>
+											<src>${basedir}/src/linux/alpidi-printer-agent.service</src>
+											<type>file</type>
+											<mapper>
+												<type>perm</type>
+												<prefix>/etc/systemd/system</prefix>
+											</mapper>
+										</data>
+									</dataSet>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+					
+					<!-- RPM Package Plugin -->
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>rpm-maven-plugin</artifactId>
+						<version>2.2.0</version>
+						<executions>
+							<execution>
+								<id>generate-rpm</id>
+								<goals>
+									<goal>rpm</goal>
+								</goals>
+							</execution>
+						</executions>
+						<configuration>
+							<license>MIT</license>
+							<distribution>Alpidi</distribution>
+							<group>Applications/Internet</group>
+							<description>Local printer management service for Alpidi applications</description>
+							<summary>Alpidi Printer Agent</summary>
+							<packager>Alpidi</packager>
+							<prefix>/opt</prefix>
+							<changelogFile>src/changelog</changelogFile>
+							<defineStatements>
+								<defineStatement>_unpackaged_files_terminate_build 0</defineStatement>
+							</defineStatements>
+							<mappings>
+								<mapping>
+									<directory>/opt/alpidi-printer-agent</directory>
+									<filemode>755</filemode>
+									<username>root</username>
+									<groupname>root</groupname>
+									<sources>
+										<source>
+											<location>${project.build.directory}/${project.artifactId}-${project.version}-exec.jar</location>
+											<destination>alpidi-printer-agent.jar</destination>
+										</source>
+									</sources>
+								</mapping>
+								<mapping>
+									<directory>/usr/bin</directory>
+									<filemode>755</filemode>
+									<username>root</username>
+									<groupname>root</groupname>
+									<sources>
+										<source>
+											<location>src/linux/alpidi-printer-agent</location>
+										</source>
+									</sources>
+								</mapping>
+								<mapping>
+									<directory>/usr/share/applications</directory>
+									<filemode>644</filemode>
+									<username>root</username>
+									<groupname>root</groupname>
+									<sources>
+										<source>
+											<location>src/linux/alpidi-printer-agent.desktop</location>
+										</source>
+									</sources>
+								</mapping>
+								<mapping>
+									<directory>/etc/systemd/system</directory>
+									<filemode>644</filemode>
+									<username>root</username>
+									<groupname>root</groupname>
+									<sources>
+										<source>
+											<location>src/linux/alpidi-printer-agent.service</location>
+										</source>
+									</sources>
+								</mapping>
+							</mappings>
+						</configuration>
 					</plugin>
 				</plugins>
 			</build>
@@ -75,30 +335,7 @@
 				</executions>
 			</plugin>
 			
-			<plugin>
-				<groupId>org.graalvm.buildtools</groupId>
-				<artifactId>native-maven-plugin</artifactId>
-				<version>0.10.2</version>
-				<extensions>true</extensions>
-				<executions>
-					<execution>
-						<id>build-native</id>
-						<goals>
-							<goal>compile-no-fork</goal>
-						</goals>
-						<phase>package</phase>
-					</execution>
-				</executions>
-				<configuration>
-					<imageName>alpidi-printer-agent</imageName>
-					<mainClass>com.alpidiprinteragent.alpidiprinteragent.AlpidiprinteragentApplication</mainClass>
-					<buildArgs>
-						<buildArg>--no-fallback</buildArg>
-						<buildArg>--install-exit-handlers</buildArg>
-						<buildArg>-H:+ReportExceptionStackTraces</buildArg>
-					</buildArgs>
-				</configuration>
-			</plugin>
+
 			
 			<plugin>
 				<groupId>com.akathist.maven.plugins.launch4j</groupId>
@@ -117,7 +354,7 @@
 							<outfile>${project.build.directory}/alpidi-printer-agent.exe</outfile>
 							<downloadUrl>https://java.com/download</downloadUrl>
 							<classPath>
-								<mainClass>com.alpidiprinteragent.alpidiprinteragent.AlpidiprinteragentApplication</mainClass>
+								<mainClass>com.alpidiprinteragent.alpidiprinteragent.service.PlatformServiceWrapper</mainClass>
 								<preCp>anything</preCp>
 							</classPath>
 							<jre>
