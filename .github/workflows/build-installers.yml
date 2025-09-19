@@ -1,0 +1,82 @@
+name: Build Agent Installers
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Cache Maven
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-maven
+
+      - name: Build JAR
+        run: mvn clean package -DskipTests
+
+      - name: Make scripts executable (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          chmod +x installer/linux/postinst
+          chmod +x installer/macos/postinstall
+
+      - name: Package installer (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          jpackage \
+            --type deb \
+            --input target \
+            --main-jar agent-0.0.1-SNAPSHOT.jar \
+            --main-class com.company.agent.MainApplication \
+            --name AgentApp \
+            --resource-dir installer/linux
+
+      - name: Package installer (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          jpackage \
+            --type pkg \
+            --input target \
+            --main-jar agent-0.0.1-SNAPSHOT.jar \
+            --main-class com.company.agent.MainApplication \
+            --name AgentApp \
+            --resource-dir installer/macos
+
+      - name: Package installer (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          jpackage ^
+            --type msi ^
+            --input target ^
+            --main-jar agent-0.0.1-SNAPSHOT.jar ^
+            --main-class com.company.agent.MainApplication ^
+            --name AgentApp ^
+            --resource-dir installer/windows ^
+            --win-service
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: AgentApp-${{ matrix.os }}
+          path: |
+            target/*.deb
+            target/*.pkg
+            target/*.msi

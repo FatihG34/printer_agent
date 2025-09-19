@@ -66,3 +66,7 @@ android-app/app/build/
 *.temp
 *.pid
 nohup.out
+
+jre-win64
+
+jmods-win64
