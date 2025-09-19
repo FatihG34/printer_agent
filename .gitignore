@@ -31,6 +31,38 @@ build/
 
 ### VS Code ###
 .vscode/
-.kiro
-.mvn
-.DS*
+
+### Kiro IDE ###
+.kiro/
+
+### Maven Wrapper ###
+.mvn/
+
+### macOS ###
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+### Runtime Config Files ###
+*.log
+
+### Build Artifacts ###
+dist/
+target/
+build/
+
+### Android ###
+android-app/build/
+android-app/.gradle/
+android-app/local.properties
+android-app/app/build/
+
+### Temporary Files ###
+*.tmp
+*.temp
+*.pid
+nohup.out

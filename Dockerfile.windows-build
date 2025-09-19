@@ -1,0 +1,26 @@
+# Windows build environment for creating .exe files
+FROM openjdk:17-jdk-slim
+
+# Install Maven
+RUN apt-get update && \
+    apt-get install -y maven && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy project files
+COPY . .
+
+# Build the project
+RUN ./mvnw clean package -DskipTests
+
+# Create output directory
+RUN mkdir -p /output
+
+# Copy built files to output
+RUN cp target/*.exe /output/ 2>/dev/null || echo "No .exe files found"
+RUN cp target/*.jar /output/
+
+# Set entrypoint
+CMD ["cp", "-r", "/output/.", "/dist/"]
