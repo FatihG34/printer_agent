@@ -13,70 +13,66 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 21
+          java-version: "21"
+          cache: maven
 
-      - name: Cache Maven
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-maven
-
-      - name: Build JAR
-        run: mvn clean package -DskipTests
-
-      - name: Make scripts executable (Linux/macOS)
-        if: runner.os != 'Windows'
+      - name: Install dependencies (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
         run: |
-          chmod +x installer/linux/postinst
-          chmod +x installer/macos/postinstall
+          choco install -y launch4j
+          choco install -y nsis
 
-      - name: Package installer (Linux)
-        if: matrix.os == 'ubuntu-latest'
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
         run: |
-          jpackage \
-            --type deb \
-            --input target \
-            --main-jar agent-0.0.1-SNAPSHOT.jar \
-            --main-class com.company.agent.MainApplication \
-            --name AgentApp \
-            --resource-dir installer/linux
+          sudo apt-get update
+          sudo apt-get install -y rpm zip
+          # Install appimagetool if not present
+          if ! command -v appimagetool >/dev/null 2>&1; then
+            curl -L -o appimagetool-x86_64.AppImage https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-x86_64.AppImage
+            chmod +x appimagetool-x86_64.AppImage
+            sudo mv appimagetool-x86_64.AppImage /usr/local/bin/appimagetool
+          fi
 
-      - name: Package installer (macOS)
-        if: matrix.os == 'macos-latest'
+      - name: Build base JAR (all OS)
         run: |
-          jpackage \
-            --type pkg \
-            --input target \
-            --main-jar agent-0.0.1-SNAPSHOT.jar \
-            --main-class com.company.agent.MainApplication \
-            --name AgentApp \
-            --resource-dir installer/macos
+          ./mvnw -version
+          ./mvnw clean package -DskipTests
 
-      - name: Package installer (Windows)
-        if: matrix.os == 'windows-latest'
+      - name: Build Windows distributions
+        if: runner.os == 'Windows'
+        shell: cmd
         run: |
-          jpackage ^
-            --type msi ^
-            --input target ^
-            --main-jar agent-0.0.1-SNAPSHOT.jar ^
-            --main-class com.company.agent.MainApplication ^
-            --name AgentApp ^
-            --resource-dir installer/windows ^
-            --win-service
+          build-windows.bat
+          build-windows-bundled.bat
+          build-windows-single-exe.bat
+
+      - name: Build macOS distributions
+        if: runner.os == 'macOS'
+        run: |
+          chmod +x build-mac.sh build-mac-bundled.sh || true
+          ./build-mac.sh
+          ./build-mac-bundled.sh
+
+      - name: Build Linux distributions
+        if: runner.os == 'Linux'
+        run: |
+          chmod +x build-linux.sh build-linux-bundled.sh || true
+          ./build-linux.sh
+          ./build-linux-bundled.sh
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: AgentApp-${{ matrix.os }}
+          name: alpidi-printer-agent-${{ matrix.os }}
           path: |
-            target/*.deb
-            target/*.pkg
-            target/*.msi
+            dist/**
+            target/*.jar
